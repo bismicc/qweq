@@ -282,9 +282,9 @@
                 </div>
 
                 <div class="actions">
-                    <button class="button" onclick="playCards()">Attack</button>
+                    <button class="button" onclick="playCards()" id="attackBtn">Attack</button>
                     <button class="button" onclick="useJoker()" id="jokerBtn" disabled>Use Joker</button>
-                    <button class="button" onclick="endTurn()">Skip Turn</button>
+                    <button class="button" onclick="endTurn()" id="skipBtn">Skip Turn</button>
                     <button class="button" onclick="resetGame()">New Game</button>
                 </div>
             </div>
@@ -341,7 +341,9 @@
             maxHandSize: 6,
             selectedCards: [],
             jokers: 0,
-            aces: []
+            aces: [],
+            waitingForDiscard: false,
+            discardRequired: 0
         };
 
         function initGame() {
@@ -356,7 +358,9 @@
                 maxHandSize: 6,
                 selectedCards: [],
                 jokers: 0,
-                aces: []
+                aces: [],
+                waitingForDiscard: false,
+                discardRequired: 0
             };
 
             createDecks();
@@ -409,6 +413,7 @@
         function drawCard() {
             if (gameState.tavernDeck.length === 0) {
                 showMessage('Tavern deck is empty! You cannot draw more cards.', 'error');
+                gameLost();
                 return false;
             }
             if (gameState.hand.length < gameState.maxHandSize) {
@@ -427,6 +432,12 @@
         }
 
         function playCards() {
+            // If waiting for discard, process discard instead
+            if (gameState.waitingForDiscard) {
+                confirmDiscard();
+                return;
+            }
+
             if (gameState.selectedCards.length === 0) {
                 showMessage('Select at least one card to play!', 'error');
                 return;
@@ -563,19 +574,66 @@
         }
 
         function bossAttack(ap) {
-            let cardsToDiscard = ap;
-            
-            if (gameState.hand.length < cardsToDiscard) {
-                gameLost();
+            if (ap === 0) {
+                showMessage('Boss attack reduced to 0!', 'success');
                 return;
             }
 
-            showMessage(`Boss attacks for ${ap} damage! Discard ${cardsToDiscard} cards.`, 'error');
+            gameState.discardRequired = ap;
+            gameState.waitingForDiscard = true;
+            gameState.selectedCards = [];
             
-            // Auto-discard from hand
-            for (let i = 0; i < cardsToDiscard && gameState.hand.length > 0; i++) {
-                gameState.discardPile.push(gameState.hand.pop());
+            showMessage(`Boss attacks for ${ap} AP! Select cards to discard (total value must be ≥ ${ap})`, 'error');
+            updateUI();
+        }
+
+        function confirmDiscard() {
+            if (gameState.selectedCards.length === 0) {
+                showMessage('Select cards to discard!', 'error');
+                return;
             }
+
+            const cards = gameState.selectedCards.map(idx => gameState.hand[idx]);
+            const total = cards.reduce((sum, card) => sum + getCardValue(card), 0);
+
+            if (total < gameState.discardRequired) {
+                showMessage(`Need at least ${gameState.discardRequired} total value! Currently selected: ${total}`, 'error');
+                return;
+            }
+
+            // Discard selected cards
+            gameState.selectedCards.sort((a, b) => b - a);
+            for (let idx of gameState.selectedCards) {
+                gameState.discardPile.push(gameState.hand.splice(idx, 1)[0]);
+            }
+
+            showMessage(`Discarded ${cards.length} cards worth ${total} value!`, 'success');
+            
+            gameState.selectedCards = [];
+            gameState.waitingForDiscard = false;
+            gameState.discardRequired = 0;
+            
+            updateUI();
+        }
+
+        function canSurviveBossAttack(ap) {
+            // Check if player has any combination of cards that sum to >= ap
+            const hand = gameState.hand;
+            const n = hand.length;
+            
+            // Try all possible combinations
+            for (let mask = 1; mask < (1 << n); mask++) {
+                let sum = 0;
+                for (let i = 0; i < n; i++) {
+                    if (mask & (1 << i)) {
+                        sum += getCardValue(hand[i]);
+                    }
+                }
+                if (sum >= ap) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         function bossDefeated() {
@@ -630,6 +688,11 @@
         }
 
         function endTurn() {
+            if (gameState.tavernDeck.length === 0) {
+                showMessage('Tavern deck is empty! Game over!', 'error');
+                gameLost();
+                return;
+            }
             showMessage('Turn ended. Draw a card.', 'success');
             drawCard();
             gameState.selectedCards = [];
@@ -703,9 +766,28 @@
             document.getElementById('defeatedBosses').innerHTML = 
                 gameState.defeatedBosses.map(b => `${b.value}${SUITS[b.suit.toUpperCase()]}`).join(', ') || 'None';
 
+            // Update buttons based on state
+            const attackBtn = document.getElementById('attackBtn');
+            const skipBtn = document.getElementById('skipBtn');
+            const jokerBtn = document.getElementById('jokerBtn');
+
+            if (gameState.waitingForDiscard) {
+                attackBtn.textContent = 'Confirm Discard';
+                skipBtn.disabled = true;
+                jokerBtn.disabled = true;
+                
+                // Check if can survive
+                if (!canSurviveBossAttack(gameState.discardRequired)) {
+                    gameLost();
+                }
+            } else {
+                attackBtn.textContent = 'Attack';
+                skipBtn.disabled = false;
+                jokerBtn.disabled = gameState.jokers <= 0;
+            }
+
             // Update joker button
-            document.getElementById('jokerBtn').disabled = gameState.jokers <= 0;
-            document.getElementById('jokerBtn').textContent = `🃏 Use Joker (${gameState.jokers})`;
+            jokerBtn.textContent = `🃏 Use Joker (${gameState.jokers})`;
         }
 
         function gameWon() {
@@ -723,8 +805,9 @@
             document.body.innerHTML += `
                 <div class="game-over">
                     <h2>Skill issue on your part!!!!!</h2>
-                    <p>You ran out of cards!</p>
+                    <p>You ran out of cards to fight with!</p>
                     <p>Money Earned: ${gameState.money}</p>
+                    <p>Bosses Defeated: ${gameState.defeatedBosses.length}/12</p>
                     <button class="button" onclick="location.reload()">Try Again</button>
                 </div>
             `;
