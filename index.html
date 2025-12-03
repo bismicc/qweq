@@ -179,6 +179,58 @@
             cursor: not-allowed;
         }
 
+        .button.attack-btn {
+            background: #e74c3c;
+            color: white;
+            border: 2px solid #c0392b;
+            font-weight: bold;
+        }
+
+        .button.attack-btn:hover:not(:disabled) {
+            background: #c0392b;
+        }
+
+        .button.discard-btn {
+            background: #f39c12;
+            color: white;
+            border: 2px solid #e67e22;
+            font-weight: bold;
+        }
+
+        .button.discard-btn:hover:not(:disabled) {
+            background: #e67e22;
+        }
+
+        .button.joker-btn {
+            background: #9b59b6;
+            color: white;
+            border: 2px solid #8e44ad;
+        }
+
+        .button.joker-btn:hover:not(:disabled) {
+            background: #8e44ad;
+        }
+
+        .button.skip-btn {
+            background: #3498db;
+            color: white;
+            border: 2px solid #2980b9;
+        }
+
+        .button.skip-btn:hover:not(:disabled) {
+            background: #2980b9;
+        }
+
+        .button.reset-btn {
+            background: #95a5a6;
+            color: white;
+            border: 2px solid #7f8c8d;
+        }
+
+        .button.reset-btn:hover {
+            background: #7f8c8d;
+        }
+
         .actions {
             display: flex;
             justify-content: center;
@@ -282,10 +334,10 @@
                 </div>
 
                 <div class="actions">
-                    <button class="button" onclick="playCards()" id="attackBtn">Attack</button>
-                    <button class="button" onclick="useJoker()" id="jokerBtn" disabled>Use Joker</button>
-                    <button class="button" onclick="endTurn()" id="skipBtn">Skip Turn</button>
-                    <button class="button" onclick="resetGame()">New Game</button>
+                    <button class="button attack-btn" onclick="playCards()" id="attackBtn">⚔️ Attack</button>
+                    <button class="button joker-btn" onclick="useJoker()" id="jokerBtn" disabled>🃏 Use Joker (0)</button>
+                    <button class="button skip-btn" onclick="endTurn()" id="skipBtn">Skip Turn</button>
+                    <button class="button reset-btn" onclick="resetGame()">New Game</button>
                 </div>
             </div>
 
@@ -617,23 +669,9 @@
         }
 
         function canSurviveBossAttack(ap) {
-            // Check if player has any combination of cards that sum to >= ap
             const hand = gameState.hand;
-            const n = hand.length;
-            
-            // Try all possible combinations
-            for (let mask = 1; mask < (1 << n); mask++) {
-                let sum = 0;
-                for (let i = 0; i < n; i++) {
-                    if (mask & (1 << i)) {
-                        sum += getCardValue(hand[i]);
-                    }
-                }
-                if (sum >= ap) {
-                    return true;
-                }
-            }
-            return false;
+            const totalValue = hand.reduce((sum, card) => sum + getCardValue(card), 0);
+            return totalValue >= ap;
         }
 
         function bossDefeated() {
@@ -772,7 +810,8 @@
             const jokerBtn = document.getElementById('jokerBtn');
 
             if (gameState.waitingForDiscard) {
-                attackBtn.textContent = 'Confirm Discard';
+                attackBtn.textContent = '✓ Confirm Discard';
+                attackBtn.className = 'button discard-btn';
                 skipBtn.disabled = true;
                 jokerBtn.disabled = true;
                 
@@ -781,7 +820,8 @@
                     gameLost();
                 }
             } else {
-                attackBtn.textContent = 'Attack';
+                attackBtn.textContent = '⚔️ Attack';
+                attackBtn.className = 'button attack-btn';
                 skipBtn.disabled = false;
                 jokerBtn.disabled = gameState.jokers <= 0;
             }
