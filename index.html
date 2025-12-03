@@ -531,18 +531,12 @@
             updateUI();
         }
 
-        function canPlayTogether(cards) {
+function canPlayTogether(cards) {
             if (cards.length === 1) return true;
 
-            // Check if all same value
+            // Check if all same value (this is the ONLY way to play multiple cards)
             const firstValue = cards[0].value;
-            if (cards.every(c => c.value === firstValue)) return true;
-
-            // Check if all number cards with total <= 10
-            const total = cards.reduce((sum, card) => sum + getCardValue(card), 0);
-            const allNumbers = cards.every(c => !['J', 'Q', 'K', 'A'].includes(c.value));
-            
-            return allNumbers && total <= 10;
+            return cards.every(c => c.value === firstValue);
         }
 
         function getCardValue(card) {
