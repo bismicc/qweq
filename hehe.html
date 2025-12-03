@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REGICIDE+ Card Game</title>
+        <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            line-height: 1.6;
+        }
+
+        .game-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        h3 {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+
+        .story {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .left-panel, .right-panel, .center-area {
+            padding: 0;
+        }
+
+        .center-area {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .boss-area {
+            border: 2px solid #000;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .boss-card {
+            border: 2px solid #000;
+            padding: 20px;
+            display: inline-block;
+            min-width: 150px;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .boss-stats {
+            margin-top: 15px;
+            font-size: 1.1em;
+        }
+
+        .hand-area {
+            border: 1px solid #ccc;
+            padding: 25px;
+            min-height: 200px;
+        }
+
+        .hand-title {
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .card {
+            border: 2px solid #000;
+            padding: 15px 10px;
+            min-width: 80px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .card:hover {
+            background: #f0f0f0;
+        }
+
+        .card.selected {
+            background: #e0e0e0;
+            border: 3px solid #000;
+        }
+
+        .card-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .card-suit {
+            font-size: 1.8em;
+        }
+
+        .info-box {
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 25px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+        }
+
+        .shop-items {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .shop-item {
+            border: 1px solid #ccc;
+            padding: 15px;
+            cursor: pointer;
+        }
+
+        .shop-item:hover {
+            background: #f5f5f5;
+        }
+
+        .button {
+            border: 1px solid #000;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 5px;
+            background: #fff;
+        }
+
+        .button:hover {
+            background: #f0f0f0;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .message {
+            border: 1px solid #000;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .discard-pile {
+            border: 1px solid #ccc;
+            padding: 15px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 3px solid #000;
+            background: #fff;
+            padding: 40px;
+            text-align: center;
+            z-index: 1000;
+            min-width: 400px;
+        }
+
+        .game-over h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .game-board {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>REGICIDE+</h1>
+        </div>
+
+        <div class="story">
+            The people of the village have lost their homes, money, and family because of the corrupt leaders. Your goal is to face those leaders and bring back peace to your community using your party that consists of heroes, animal companions, and items with special abilities.
+        </div>
+
+        <div class="game-board">
+            <div class="left-panel">
+                <h3>Resources</h3>
+                <div class="info-box">
+                    <div class="info-row">
+                        <span>Money:</span>
+                        <span id="money">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Hand Size:</span>
+                        <span id="handSize">6</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Tavern Deck:</span>
+                        <span id="tavernCount">0</span>
+                    </div>
+                </div>
+
+                <h3>Shop</h3>
+                <div class="shop-items">
+                    <div class="shop-item" onclick="buyHandSize()">
+                        <div>Increase Hand Size</div>
+                        <div style="font-size: 0.9em; color: #f39c12;">Cost: 2000</div>
+                    </div>
+                    <div class="shop-item" onclick="buyJoker()">
+                        <div>Buy Joker</div>
+                        <div style="font-size: 0.9em; color: #f39c12;">Cost: 1500</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="center-area">
+                <div class="boss-area">
+                    <h2>👑 Current Boss</h2>
+                    <div id="bossCard"></div>
+                    <div class="boss-stats" id="bossStats"></div>
+                </div>
+
+                <div id="messageArea"></div>
+
+                <div class="hand-area">
+                    <div class="hand-title">Your Hand (Click to select cards)</div>
+                    <div class="hand" id="hand"></div>
+                </div>
+
+                <div class="actions">
+                    <button class="button" onclick="playCards()">Attack</button>
+                    <button class="button" onclick="useJoker()" id="jokerBtn" disabled>Use Joker</button>
+                    <button class="button" onclick="endTurn()">Skip Turn</button>
+                    <button class="button" onclick="resetGame()">New Game</button>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <h3>Defeated Bosses</h3>
+                <div id="defeatedBosses" class="discard-pile"></div>
+
+                <h3 style="margin-top: 20px;">Discard Pile</h3>
+                <div id="discardPile" class="discard-pile"></div>
+
+                <h3 style="margin-top: 20px;">Suit Powers</h3>
+                <div style="font-size: 0.85em; line-height: 1.6;">
+                    <div>Spades: Reduce boss AP</div>
+                    <div>Hearts: Return cards to tavern</div>
+                    <div>Clubs: Double damage</div>
+                    <div>Diamonds: Draw more cards</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUITS = {
+            SPADES: '♠️',
+            HEARTS: '♥️',
+            CLUBS: '♣️',
+            DIAMONDS: '♦️'
+        };
+
+        const SUIT_NAMES = ['spades', 'hearts', 'clubs', 'diamonds'];
+        const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+        const FACE_CARDS = {
+            'J': { hp: 20, ap: 10 },
+            'Q': { hp: 30, ap: 15 },
+            'K': { hp: 40, ap: 20 }
+        };
+
+        let gameState = {
+            hand: [],
+            tavernDeck: [],
+            castleDeck: [],
+            discardPile: [],
+            defeatedBosses: [],
+            currentBoss: null,
+            money: 0,
+            maxHandSize: 6,
+            selectedCards: [],
+            jokers: 0,
+            aces: []
+        };
+
+        function initGame() {
+            gameState = {
+                hand: [],
+                tavernDeck: [],
+                castleDeck: [],
+                discardPile: [],
+                defeatedBosses: [],
+                currentBoss: null,
+                money: 0,
+                maxHandSize: 6,
+                selectedCards: [],
+                jokers: 0,
+                aces: []
+            };
+
+            createDecks();
+            drawInitialHand();
+            flipNextBoss();
+            updateUI();
+        }
+
+        function createDecks() {
+            // Create tavern deck (number cards and Aces)
+            for (let suit of SUIT_NAMES) {
+                for (let value of VALUES) {
+                    gameState.tavernDeck.push({ value, suit });
+                }
+            }
+            shuffle(gameState.tavernDeck);
+
+            // Create castle deck (face cards)
+            for (let suit of SUIT_NAMES) {
+                for (let face of ['J', 'Q', 'K']) {
+                    gameState.castleDeck.push({
+                        value: face,
+                        suit,
+                        hp: FACE_CARDS[face].hp,
+                        maxHp: FACE_CARDS[face].hp,
+                        ap: FACE_CARDS[face].ap
+                    });
+                }
+            }
+            // Kings first, then Queens, then Jacks
+            gameState.castleDeck.sort((a, b) => {
+                const order = { 'K': 3, 'Q': 2, 'J': 1 };
+                return order[b.value] - order[a.value];
+            });
+        }
+
+        function shuffle(deck) {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function drawInitialHand() {
+            for (let i = 0; i < gameState.maxHandSize; i++) {
+                drawCard();
+            }
+        }
+
+        function drawCard() {
+            if (gameState.tavernDeck.length === 0) {
+                showMessage('Tavern deck is empty! You cannot draw more cards.', 'error');
+                return false;
+            }
+            if (gameState.hand.length < gameState.maxHandSize) {
+                gameState.hand.push(gameState.tavernDeck.pop());
+                return true;
+            }
+            return false;
+        }
+
+        function flipNextBoss() {
+            if (gameState.castleDeck.length === 0) {
+                gameWon();
+                return;
+            }
+            gameState.currentBoss = gameState.castleDeck.pop();
+        }
+
+        function playCards() {
+            if (gameState.selectedCards.length === 0) {
+                showMessage('Select at least one card to play!', 'error');
+                return;
+            }
+
+            if (!gameState.currentBoss) {
+                showMessage('No boss to fight!', 'error');
+                return;
+            }
+
+            const cards = gameState.selectedCards.map(idx => gameState.hand[idx]);
+            
+            // Check if cards can be played together
+            if (!canPlayTogether(cards)) {
+                showMessage('Cards must be same value or all number cards with total ≤ 10!', 'error');
+                return;
+            }
+
+            // Calculate total damage
+            let totalDamage = 0;
+            let suits = [];
+            
+            for (let card of cards) {
+                const value = getCardValue(card);
+                totalDamage += value;
+                if (!suits.includes(card.suit)) {
+                    suits.push(card.suit);
+                }
+            }
+
+            // Check if single cards exceed 10
+            if (cards.length === 1 && totalDamage > 10) {
+                showMessage('Single card attack cannot exceed 10!', 'error');
+                return;
+            }
+
+            // Apply suit powers
+            let bossAP = gameState.currentBoss.ap;
+            let damageMultiplier = 1;
+            let drawCards = 0;
+            let returnCards = 0;
+
+            for (let suit of suits) {
+                // Check immunity
+                if (suit === gameState.currentBoss.suit) {
+                    showMessage(`Boss is immune to ${SUITS[suit.toUpperCase()]} attacks! Suit power does not activate.`, 'error');
+                    continue;
+                }
+
+                if (suit === 'spades') {
+                    bossAP = Math.max(0, bossAP - totalDamage);
+                }
+                if (suit === 'clubs') {
+                    damageMultiplier = 2;
+                }
+                if (suit === 'diamonds') {
+                    for (let card of cards) {
+                        if (card.suit === 'diamonds') {
+                            drawCards += getCardValue(card);
+                        }
+                    }
+                }
+                if (suit === 'hearts') {
+                    for (let card of cards) {
+                        if (card.suit === 'hearts') {
+                            returnCards += getCardValue(card);
+                        }
+                    }
+                }
+            }
+
+            const finalDamage = totalDamage * damageMultiplier;
+            gameState.currentBoss.hp -= finalDamage;
+
+            showMessage(`Dealt ${finalDamage} damage! Boss has ${Math.max(0, gameState.currentBoss.hp)} HP left.`, 'success');
+
+            // Move played cards to discard
+            gameState.selectedCards.sort((a, b) => b - a);
+            for (let idx of gameState.selectedCards) {
+                gameState.discardPile.push(gameState.hand.splice(idx, 1)[0]);
+            }
+            gameState.selectedCards = [];
+
+            // Apply hearts power
+            if (returnCards > 0) {
+                const cardsToReturn = gameState.discardPile.splice(0, Math.min(returnCards, gameState.discardPile.length));
+                shuffle(cardsToReturn);
+                gameState.tavernDeck = [...cardsToReturn, ...gameState.tavernDeck];
+                showMessage(`♥️ Returned ${cardsToReturn.length} cards to tavern deck!`, 'success');
+            }
+
+            // Check if boss is defeated
+            if (gameState.currentBoss.hp <= 0) {
+                bossDefeated();
+            } else {
+                // Boss attacks back
+                bossAttack(bossAP);
+            }
+
+            // Apply diamonds power
+            if (drawCards > 0) {
+                const cardsDrawn = Math.min(drawCards, gameState.maxHandSize - gameState.hand.length);
+                for (let i = 0; i < cardsDrawn; i++) {
+                    drawCard();
+                }
+                showMessage(`♦️ Drew ${cardsDrawn} cards!`, 'success');
+            }
+
+            updateUI();
+        }
+
+        function canPlayTogether(cards) {
+            if (cards.length === 1) return true;
+
+            // Check if all same value
+            const firstValue = cards[0].value;
+            if (cards.every(c => c.value === firstValue)) return true;
+
+            // Check if all number cards with total <= 10
+            const total = cards.reduce((sum, card) => sum + getCardValue(card), 0);
+            const allNumbers = cards.every(c => !['J', 'Q', 'K', 'A'].includes(c.value));
+            
+            return allNumbers && total <= 10;
+        }
+
+        function getCardValue(card) {
+            if (card.value === 'A') return 1;
+            if (card.value === 'J') return 10;
+            if (card.value === 'Q') return 15;
+            if (card.value === 'K') return 20;
+            return parseInt(card.value);
+        }
+
+        function bossAttack(ap) {
+            let cardsToDiscard = ap;
+            
+            if (gameState.hand.length < cardsToDiscard) {
+                gameLost();
+                return;
+            }
+
+            showMessage(`Boss attacks for ${ap} damage! Discard ${cardsToDiscard} cards.`, 'error');
+            
+            // Auto-discard from hand
+            for (let i = 0; i < cardsToDiscard && gameState.hand.length > 0; i++) {
+                gameState.discardPile.push(gameState.hand.pop());
+            }
+        }
+
+        function bossDefeated() {
+            const reward = 1000 + Math.floor(gameState.hand.length / 2) * 100;
+            gameState.money += reward;
+            
+            showMessage(`Boss defeated! Earned ${reward} gold!`, 'success');
+            
+            gameState.defeatedBosses.push(gameState.currentBoss);
+            gameState.currentBoss = null;
+            
+            flipNextBoss();
+        }
+
+        function buyHandSize() {
+            if (gameState.money >= 2000 && gameState.maxHandSize < 12) {
+                gameState.money -= 2000;
+                gameState.maxHandSize++;
+                showMessage('Hand size increased!', 'success');
+                updateUI();
+            } else if (gameState.maxHandSize >= 12) {
+                showMessage('Maximum hand size reached!', 'error');
+            } else {
+                showMessage('Not enough money!', 'error');
+            }
+        }
+
+        function buyJoker() {
+            if (gameState.money >= 1500) {
+                gameState.money -= 1500;
+                gameState.jokers++;
+                showMessage('Joker purchased!', 'success');
+                updateUI();
+            } else {
+                showMessage('Not enough money!', 'error');
+            }
+        }
+
+        function useJoker() {
+            if (gameState.jokers <= 0) return;
+            
+            gameState.jokers--;
+            gameState.discardPile.push(...gameState.hand);
+            gameState.hand = [];
+            
+            for (let i = 0; i < gameState.maxHandSize; i++) {
+                drawCard();
+            }
+            
+            showMessage('Joker used! New hand drawn!', 'success');
+            updateUI();
+        }
+
+        function endTurn() {
+            showMessage('Turn ended. Draw a card.', 'success');
+            drawCard();
+            gameState.selectedCards = [];
+            updateUI();
+        }
+
+        function selectCard(index) {
+            const idx = gameState.selectedCards.indexOf(index);
+            if (idx > -1) {
+                gameState.selectedCards.splice(idx, 1);
+            } else {
+                gameState.selectedCards.push(index);
+            }
+            updateUI();
+        }
+
+        function showMessage(text, type = 'success') {
+            const msgArea = document.getElementById('messageArea');
+            msgArea.innerHTML = `<div class="message ${type}">${text}</div>`;
+            setTimeout(() => {
+                if (msgArea.innerHTML.includes(text)) {
+                    msgArea.innerHTML = '';
+                }
+            }, 3000);
+        }
+
+        function updateUI() {
+            // Update resources
+            document.getElementById('money').textContent = gameState.money;
+            document.getElementById('handSize').textContent = `${gameState.hand.length}/${gameState.maxHandSize}`;
+            document.getElementById('tavernCount').textContent = gameState.tavernDeck.length;
+
+            // Update boss
+            if (gameState.currentBoss) {
+                const boss = gameState.currentBoss;
+                document.getElementById('bossCard').innerHTML = `
+                    <div class="boss-card ${boss.suit}">
+                        <div>${boss.value}${SUITS[boss.suit.toUpperCase()]}</div>
+                    </div>
+                `;
+                document.getElementById('bossStats').innerHTML = `
+                    HP: ${boss.hp}/${boss.maxHp} | AP: ${boss.ap}
+                `;
+            } else {
+                document.getElementById('bossCard').innerHTML = '<div>No boss</div>';
+                document.getElementById('bossStats').innerHTML = '';
+            }
+
+            // Update hand
+            const handEl = document.getElementById('hand');
+            handEl.innerHTML = '';
+            gameState.hand.forEach((card, idx) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = `card ${card.suit}`;
+                if (gameState.selectedCards.includes(idx)) {
+                    cardDiv.classList.add('selected');
+                }
+                cardDiv.onclick = () => selectCard(idx);
+                cardDiv.innerHTML = `
+                    <div class="card-value">${card.value}</div>
+                    <div class="card-suit">${SUITS[card.suit.toUpperCase()]}</div>
+                `;
+                handEl.appendChild(cardDiv);
+            });
+
+            // Update discard pile
+            document.getElementById('discardPile').innerHTML = 
+                gameState.discardPile.map(c => `${c.value}${SUITS[c.suit.toUpperCase()]}`).join(', ') || 'Empty';
+
+            // Update defeated bosses
+            document.getElementById('defeatedBosses').innerHTML = 
+                gameState.defeatedBosses.map(b => `${b.value}${SUITS[b.suit.toUpperCase()]}`).join(', ') || 'None';
+
+            // Update joker button
+            document.getElementById('jokerBtn').disabled = gameState.jokers <= 0;
+            document.getElementById('jokerBtn').textContent = `🃏 Use Joker (${gameState.jokers})`;
+        }
+
+        function gameWon() {
+            document.body.innerHTML += `
+                <div class="game-over">
+                    <h2>Waw bro u won</h2>
+                    <p>You have defeated all the corrupt leaders!</p>
+                    <p>Final Money: ${gameState.money}</p>
+                    <button class="button" onclick="location.reload()">Play Again</button>
+                </div>
+            `;
+        }
+
+        function gameLost() {
+            document.body.innerHTML += `
+                <div class="game-over">
+                    <h2>Skill issue on your part!!!!!</h2>
+                    <p>You ran out of cards!</p>
+                    <p>Money Earned: ${gameState.money}</p>
+                    <button class="button" onclick="location.reload()">Try Again</button>
+                </div>
+            `;
+        }
+
+        function resetGame() {
+            if (confirm('Are you sure you want to start a new game?')) {
+                initGame();
+            }
+        }
+
+        // Initialize game on load
+        initGame();
+    </script>
+</body>
+</html>
