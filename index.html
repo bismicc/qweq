@@ -434,7 +434,7 @@
             
             // Check if cards can be played together
             if (!canPlayTogether(cards)) {
-                showMessage('Cards must be same value or all number cards with total ≤ 10!', 'error');
+                showMessage('All cards must have the same value!', 'error');
                 return;
             }
 
@@ -448,12 +448,6 @@
                 if (!suits.includes(card.suit)) {
                     suits.push(card.suit);
                 }
-            }
-
-            // Check if single cards exceed 10
-            if (cards.length === 1 && totalDamage > 10) {
-                showMessage('Single card attack cannot exceed 10!', 'error');
-                return;
             }
 
             // Apply suit powers
@@ -531,10 +525,10 @@
             updateUI();
         }
 
-function canPlayTogether(cards) {
+        function canPlayTogether(cards) {
             if (cards.length === 1) return true;
 
-            // Check if all same value (this is the ONLY way to play multiple cards)
+            // Check if all same value
             const firstValue = cards[0].value;
             return cards.every(c => c.value === firstValue);
         }
