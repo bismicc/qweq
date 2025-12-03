@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>REGICIDE+ Card Game</title>
-        <style>
+    <style>
         * {
             margin: 0;
             padding: 0;
@@ -296,12 +296,19 @@
                 <h3 style="margin-top: 20px;">Discard Pile</h3>
                 <div id="discardPile" class="discard-pile"></div>
 
-                <h3 style="margin-top: 20px;">Suit Powers</h3>
+                <h3 style="margin-top: 20px;">Rules</h3>
                 <div style="font-size: 0.85em; line-height: 1.6;">
-                    <div>Spades: Reduce boss AP</div>
-                    <div>Hearts: Return cards to tavern</div>
-                    <div>Clubs: Double damage</div>
-                    <div>Diamonds: Draw more cards</div>
+                    <div><strong>Suit Powers:</strong></div>
+                    <div>♠️ Spades: Reduce boss AP</div>
+                    <div>♥️ Hearts: Return cards to tavern</div>
+                    <div>♣️ Clubs: Double damage</div>
+                    <div>♦️ Diamonds: Draw cards first</div>
+                    <br>
+                    <div><strong>Play Rules:</strong></div>
+                    <div>• Pairs/3-of-a-kind/4-of-a-kind</div>
+                    <div>• Aces can combo with any card</div>
+                    <div>• Boss immune to same suit</div>
+                    <div>• Face cards: J=10AP, Q=15AP, K=20AP</div>
                 </div>
             </div>
         </div>
@@ -434,7 +441,7 @@
             
             // Check if cards can be played together
             if (!canPlayTogether(cards)) {
-                showMessage('All cards must have the same value!', 'error');
+                showMessage('Cards must be same value or include an Ace with total ≤ 10!', 'error');
                 return;
             }
 
@@ -450,24 +457,27 @@
                 }
             }
 
-            // Apply suit powers
+            // Apply suit powers BEFORE damage
             let bossAP = gameState.currentBoss.ap;
             let damageMultiplier = 1;
             let drawCards = 0;
             let returnCards = 0;
+            let messages = [];
 
             for (let suit of suits) {
-                // Check immunity
+                // Check immunity - same suit as boss cancels suit power
                 if (suit === gameState.currentBoss.suit) {
-                    showMessage(`Boss is immune to ${SUITS[suit.toUpperCase()]} attacks! Suit power does not activate.`, 'error');
+                    messages.push(`Boss is immune to ${SUITS[suit.toUpperCase()]}! Suit power canceled.`);
                     continue;
                 }
 
                 if (suit === 'spades') {
                     bossAP = Math.max(0, bossAP - totalDamage);
+                    messages.push(`♠️ Reduced boss AP by ${totalDamage}!`);
                 }
                 if (suit === 'clubs') {
                     damageMultiplier = 2;
+                    messages.push(`♣️ Damage doubled!`);
                 }
                 if (suit === 'diamonds') {
                     for (let card of cards) {
@@ -475,6 +485,7 @@
                             drawCards += getCardValue(card);
                         }
                     }
+                    messages.push(`♦️ Will draw ${drawCards} cards!`);
                 }
                 if (suit === 'hearts') {
                     for (let card of cards) {
@@ -482,13 +493,23 @@
                             returnCards += getCardValue(card);
                         }
                     }
+                    messages.push(`♥️ Will return ${returnCards} cards to tavern!`);
                 }
+            }
+
+            // Apply diamonds power BEFORE boss attack
+            if (drawCards > 0) {
+                const cardsDrawn = Math.min(drawCards, gameState.maxHandSize - gameState.hand.length);
+                for (let i = 0; i < cardsDrawn; i++) {
+                    if (!drawCard()) break;
+                }
+                showMessage(`♦️ Drew ${cardsDrawn} cards first!`, 'success');
             }
 
             const finalDamage = totalDamage * damageMultiplier;
             gameState.currentBoss.hp -= finalDamage;
 
-            showMessage(`Dealt ${finalDamage} damage! Boss has ${Math.max(0, gameState.currentBoss.hp)} HP left.`, 'success');
+            showMessage(messages.join(' ') + ` | Dealt ${finalDamage} damage! Boss HP: ${Math.max(0, gameState.currentBoss.hp)}`, 'success');
 
             // Move played cards to discard
             gameState.selectedCards.sort((a, b) => b - a);
@@ -502,7 +523,6 @@
                 const cardsToReturn = gameState.discardPile.splice(0, Math.min(returnCards, gameState.discardPile.length));
                 shuffle(cardsToReturn);
                 gameState.tavernDeck = [...cardsToReturn, ...gameState.tavernDeck];
-                showMessage(`♥️ Returned ${cardsToReturn.length} cards to tavern deck!`, 'success');
             }
 
             // Check if boss is defeated
@@ -513,24 +533,25 @@
                 bossAttack(bossAP);
             }
 
-            // Apply diamonds power
-            if (drawCards > 0) {
-                const cardsDrawn = Math.min(drawCards, gameState.maxHandSize - gameState.hand.length);
-                for (let i = 0; i < cardsDrawn; i++) {
-                    drawCard();
-                }
-                showMessage(`♦️ Drew ${cardsDrawn} cards!`, 'success');
-            }
-
             updateUI();
         }
 
         function canPlayTogether(cards) {
             if (cards.length === 1) return true;
 
-            // Check if all same value
             const firstValue = cards[0].value;
-            return cards.every(c => c.value === firstValue);
+            
+            // Check if all same value (pairs, three of a kind, four of a kind)
+            if (cards.every(c => c.value === firstValue)) return true;
+
+            // Check if playing with Aces - Aces can be played with any card up to total 10
+            const hasAce = cards.some(c => c.value === 'A');
+            if (hasAce) {
+                const total = cards.reduce((sum, card) => sum + getCardValue(card), 0);
+                return total <= 10;
+            }
+
+            return false;
         }
 
         function getCardValue(card) {
